@@ -1,0 +1,107 @@
+-- 18 October 2022
+-- CSC385/CSCM85
+-- Template for Lab 2 (Dining Philosophers' Problem)
+
+-- This template is to be used in conjunction with the
+-- lab sheet verification-lab2-Oct22.pdf
+
+M = 5
+I = {0..M-1}
+
+right(n) = (n+1)%M
+
+first_up(n) = n
+second_up(n) = right(n) 
+first_down(n) = n
+second_down(n) = right(n)
+
+channel think, eat : I
+channel up, down: I.I
+
+
+-- Task 1. (Modelling the philosophers)
+-- =======
+
+-- P(n) = think.n -> ...
+
+-- Phils = ...
+
+F(n) = [] m : I @ up.m.n -> [] k : I @ down.k.n -> F(n)
+
+Forks = ||| n : I @ F(n)
+
+
+
+-- Task 2. (Dining Philosophers and their analysis)
+-- =======
+
+-- DinPhils = Phils [| ... |] Forks
+
+-- assert ...
+
+
+
+-- Task 3. (Avoiding deadlock by changing a philosopher's habits)}
+-- =======
+
+-- first_up(n) = if n == 0 then right(n) else n
+-- second_up(n) = ...
+
+
+
+-- Preparations for Task 4.
+
+inc(n) = if n < M then n+1 else n
+dec(n) = if n > 0 then n-1 else n
+
+Sit_Down = { up.n.first_up(n) | n <- I }
+Get_Up = { down.n.second_down(n) | n <- I }
+
+Butler(k) = (if k < M-1 
+             then [] sit : Sit_Down @ sit -> Butler(inc(k)) 
+             else STOP) 
+         [] ([] getup : Get_Up @ getup -> Butler(dec(k)))
+
+
+-- Task 4. (Controlling the dining philosophers by the butler)}
+-- =======
+
+-- DinPhilsB =
+
+-- assert ...
+
+
+-- Preparations for Task 5.
+
+FinishEating = { down.n.first_down(n) | n <- I }
+
+channel eating : Int
+
+Catering(k) = 
+    eating.k ->  ( eat?n -> Catering(inc(k)) 
+                   [] 
+                  ([] f : FinishEating @ f -> Catering(dec(k))) )
+
+
+-- Uncomment as soon as DinPhils and DinPhilsB are defined
+-- DinPhilsC = DinPhils [| union({|eat|}, FinishEating) |] Catering(0)
+-- DinPhilsBC = DinPhilsB [| union({|eat|}, FinishEating) |] Catering(0)
+
+
+-- Task 5. (Checking catering's workload)}
+-- =======
+
+CateringSpec(m) = eating ? k : {0..m} -> CateringSpec(m)
+
+-- assert ...  (checking that for DinPhilsC at most M/2 philophers are eating at any time)
+-- assert ...  (checking that this number cannot be lowered)
+
+-- assert ...  (checking that for DinPhilsBC at most M/2 philophers are eating at any time)
+-- assert ...  (checking that this number cannot be lowered)
+
+
+-- Task 6. (Verifying that controlled philosophers are not impeded)}
+-- =======
+
+-- assert ...  (checking that DinPhilsB can do any thin/eat traces that DinPhils can do)
+-- assert ...  (checking that DinPhils can do any thin/eat traces that DinPhilsB can do)

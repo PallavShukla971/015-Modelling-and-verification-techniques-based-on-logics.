@@ -1,0 +1,265 @@
+-- 27-10-2022
+-- CSCM85/CSC385 Verification and Modelling Techniques
+-- Lab 2: Modelling and Verifying Security Protocols
+ 
+-- This file contains the declaration for modelling the
+-- Needham-Schroeder Protocol (NSP)
+
+-- It also contains the lab tasks with templates for the solutions.
+-- The solutions can be directly written in this file.
+-- In order to be awarded marks solutions must be shown to the lecturer
+-- or demonstrator during the lab sessions.
+
+-- Each task is worth 10 marks.
+
+-- Contents
+
+-- Preliminaries (users, nonces, messages, reducing redundancy, channels, environment)
+-- Task 1: Modelling honest users 
+-- Task 2: Modelling and analysing the NSP with honest users only
+-- Task 3: Modelling the intruder
+-- Task 4: Modelling and analysing the NSP with intruder
+-- Task 5: Modelling and analysing the NSLP with intruder
+
+-- The following declarations can be used in the modelling of the NSP
+
+-- You can evaluate the constants and functions in FDR to
+-- see what they denote or compute.
+
+-- Detailed explanation are given in the lab sheet \texttt{verification-lab3-Oct22.pdf}.
+-- You should also have the course notes at hand when completing the lab tasks.
+
+-- Preliminaries
+-- =============
+
+-- Users, nonces, messages
+-- =======================
+
+datatype User = A | B | I
+
+datatype Nonce = N.User.User 
+
+Message = 
+  { i.ns.us.v | i <- {1,2,3}, 
+                ns <- union({<n> | n <- Nonce}, {<n,m> | n <- Nonce, m <- Nonce}) ,
+                us <- union({<>}, {<u> | u <- User}) , 
+                v <- User }
+
+-- The nonces in a message
+nonces(_.ns._._) = ns
+
+-- The user whose public key was used to encode the plain text.
+pk(_._._.v) = v
+
+
+-- Reducing redundancy
+-- ===================
+
+-- All relevant nonces:
+RelNonce = { N.u.v | u <- User, v <- diff(User,{u}) }
+
+-- All relevant messages:
+RelMessage = 
+  Union( { { 1.<n>.<u>.v | n <- RelNonce, u <- User, v <- User },
+           { 2.<n,m>.<>.u | n <- RelNonce, m <- RelNonce, u <- User },
+           { 3.<m>.<>.v | m <- RelNonce, v <- User } } )
+
+
+-- Channels and the environment
+-- ============================
+
+channel send, receive : Message
+
+ENV = send ? msg : RelMessage -> receive . msg -> ENV
+
+
+
+
+-- Task 1: Modelling honest users
+-- ==============================
+
+
+-- Task 1.1: Uncomment and complete the following code fragments of processes
+-- =========
+--   UA(u) ("User Active") modelling a user u who plays the role of the initiator,
+
+--   UP(u) ("User Passive") modelling a user u who plays the role of the responder. 
+
+{-
+UA(u) = [] v : diff(User,{u}) @ 
+         let n = N.u.v within  
+        send.1.<n>.<u>.v     ->
+        [] m : diff(RelNonce,{n}) @ 
+        receive.2.<n,m>.<>.u ->
+        ...                  -> 
+        STOP
+-}
+{-           
+ UP(v) =   [] u : diff(User,{v}), n : RelNonce @
+          ...                ->
+          let m = N.v.u within  
+          ...                ->
+          ...                -> 
+          STOP
+-}
+
+-- Task 1.2: Define a process U(u) of a user who has the choice to play 
+-- ========= the active or the passive part in the NSP
+
+{-
+U(u) = ...
+-}
+
+-- In the definitions of UA(u) and UP(u) you may replace STOP by U(u)
+-- to allow a user to repeatedly engage in a session.
+
+-- Task 1.3: Define all users running in parallel without direct communication
+-- =========
+ 
+{-
+USERS = ...
+-}
+
+
+
+-- Task 2: Modelling and analysing the NSP with honest users only
+-- ===========================================================
+
+
+-- Task 2.1: Model the process system of all users interacting with the environment
+-- ========= via the channels send and receive. This is our model of the NSP.
+
+{-
+System = ...
+-}
+
+-- The sets of nonces generated respectively intended for user u:
+
+noncesFrom(u) = { N.u.v | v <- diff(User,{u}) }
+noncesFor(u) = { N.v.u | v <- diff(User,{u}) }
+
+-- The set of nonces user u is allowed to know:
+
+noncesAllowed(u) = union(noncesFrom(u), noncesFor(u))
+
+-- A boolean function that tests whether all nonces in a list of nonces 
+-- are allowed to be known by a user:
+
+allAllowed(ns,u) = 
+    if ns == <> 
+    then true
+    else member(head(ns),noncesAllowed(u)) and allAllowed(tail(ns),u)
+
+-- A message is innocent if the only user who can see the nonces in the message 
+-- is allowed to see them.
+
+Innocent(msg) = allAllowed(nonces(msg),pk(msg))
+
+-- Given a set S of user, SECRET(S) computes the set of all messages msg such that
+-- no user in S can see a nonce in msg that they are not supposed to see.
+
+SECRET(S) = 
+  { msg | msg <- RelMessage, not(member(pk(msg),S)) or Innocent(msg) }
+
+
+-- Task 2.2: Define a specification process SECRECY(S) which can perform exactly
+-- ========= the actions of the form receive.msg, where msg is a message in SECRETS(S).
+{-
+SECRECY(S) = ...
+-}
+
+-- Task 2.3: Check that System is safe for honest users. That is, when running System, 
+-- ========= no user can get hold of a nonce they are not supposed to know.
+--           
+{-
+assert ... 
+-}
+
+-- Task 2.4 (Optional) Think of ways to see that the intended runs of the NSP
+-- ======== are modelled by the process System, that is, occur as traces of System.
+
+-- Task 2.5 (Optional) Check whether System is deadlock free. Analyse the result
+-- ======== and think of ways to prevent deadlock.
+
+
+
+-- Task 3: Modelling the intruder
+-- ==============================
+
+-- The sequence of nonces the intruder can read off from a message: 
+
+learnI(msg) = if pk(msg) == I then nonces(msg) else <>
+
+-- The set of nonces the intruder can learn from a set of messages, 
+-- or generate by himself:
+
+genNoncesI(Msg) = union(Union({set(learnI(msg)) | msg <- Msg}), noncesFrom(I))
+
+-- Generating all unsuspected messages from a given set Ns of nonces
+
+allMessages(Ns) = 
+ Union(
+  {
+   {1.<n>.<u>.v | v <- User, n <- Ns, u <- diff(User,{v}) },
+   {2.<n,m>.<>.u | u <- User, 
+                   n <- { N.u.v | v <- diff(User,{u}) }, 
+                   member(n,Ns),  
+                   m <- diff(Ns,{n}) }, 
+   {3.<n>.<>.v | v <- User, 
+                 n <- { N.v.u | u <- diff(User,{v}) }, 
+                 member(n,Ns)} 
+  }
+      )
+
+-- The set of messages the intruder can generate from the messages in Msg, 
+--  or generate by himself:
+
+genMessagesI(Msg) = union(Msg,allMessages(genNoncesI(Msg)))
+
+-- Here is the task: Model the intruder by completing the following template:
+-- ================= 
+{-
+Intruder = [] msg : RelMessage @
+           receive.msg ->
+           [] msg' : ... @
+           ... ->
+           Intruder
+-}
+             
+
+-- Task 4: Modelling and analysing the NSP with intruder
+-- =================================================
+
+-- We let user I behave as an intruder (uncomment when the Intruer had been completed):
+{-
+UI(u) = if u != I then U(u) else Intruder
+-}
+
+-- Task 4.1: Let the users and the intruder run in parallel, without direct communication:
+-- =========
+{- 
+USERSI = ...
+-}
+
+-- Task 4.2: Define the analogue to System, but now with the intruder:
+-- ========= 
+{-
+SystemI = ...
+-}
+
+-- Task 4.3: Check whether the NSP is safe, that is, whether the can learn a secret nonce.
+-- =========
+{-
+assert ...
+-}
+
+-- Check that the attack described by Lowe has been found. 
+
+-- Task 5: Modelling and analysing the Needham-Schroeder-Lowe protocol (NSLP) with intruder
+-- ========================================================================================
+
+-- Change the code above so that it models the NSLP, Lowes amendment of the NSP.
+-- Analyse the NSLP. Try to increase the number of users.
+-- You may either make a copy of the file and then make changes or directly edit
+-- the file, keeping the old lines as comments.
+-- Alternatively, you may create new processes with new names (add "L" at the end)
