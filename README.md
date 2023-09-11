@@ -9,11 +9,17 @@ Modeling and verification,
 we are basically sorting out and testing different types of model and then verifying it by testing again and again.
 
 Covered topic in this whole module are like 
+
 -> 1.) Labelled transition systems (LTS), traces, bisimulation
+
 -> 2.) Modelling processes in CSP
+
 -> 3.) Verification of processes using model checking
+
 -> 4.) Modeling and verifying security protocols
+
 -> 5.) Program extraction from proofs
+
 -> 6.) Program Extraction Theorem.
 
 In this Repository we have 3 different departments 
